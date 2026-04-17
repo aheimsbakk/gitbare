@@ -122,6 +122,7 @@ gitbare --help
   - **Export:** invalid usage.
 - `-v`, `--verbose`
   - Emit progress and decision logs to `stderr`.
+  - Verbose progress must be streamed during the run, not buffered and printed as a final summary.
   - In export mode, include ordered per-repository progress counters, discovery mode, dry-run planning, selected primary remotes, captured metadata counts, and detailed dirty/local-only/stash paths or names.
   - In import mode, include ordered per-repository progress counters, YAML load summary, dry-run planning, clone/pull decisions, and restore step transitions for remotes, HEAD, config, submodules, and worktrees.
   - Must never pollute `stdout` during export.

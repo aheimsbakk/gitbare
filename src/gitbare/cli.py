@@ -12,6 +12,10 @@ from gitbare.exporter import dump_yaml, export_repositories
 from gitbare.importer import import_repositories, parse_yaml_import
 
 
+def print_stderr(message: str) -> None:
+    print(message, file=sys.stderr, flush=True)
+
+
 def get_version() -> str:
     try:
         return version("gitbare")
@@ -87,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             input_text = read_import_text(args, sys.stdin)
             parse_yaml_import(input_text)
-            messages, failed = import_repositories(
+            failed = import_repositories(
                 Path.cwd(),
                 input_text,
                 pull=args.pull,
@@ -97,13 +101,9 @@ def main(argv: list[str] | None = None) -> int:
                 verbose=args.verbose,
             )
         except (OSError, ValueError) as error:
-            print(str(error), file=sys.stderr)
+            print_stderr(str(error))
             return 1
-        for message in messages:
-            print(message, file=sys.stderr)
         return 3 if failed else 0
-    data, warnings = export_repositories(Path.cwd(), args.recursive, args.verbose, args.dry_run)
-    for warning in warnings:
-        print(warning, file=sys.stderr)
+    data = export_repositories(Path.cwd(), args.recursive, args.verbose, args.dry_run)
     write_export_text(args, sys.stdout, dump_yaml(data))
     return 0

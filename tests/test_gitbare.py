@@ -7,9 +7,13 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from io import StringIO
 from pathlib import Path
 
 import yaml
+
+from gitbare.logging_utils import OperationLogger
+from gitbare.cli import print_stderr
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -78,6 +82,44 @@ class GitbareCliTests(unittest.TestCase):
         version_result = run(["--version"], cwd=self.temp_dir)
         self.assertEqual(version_result.returncode, 0)
         self.assertRegex(version_result.stdout.strip(), r"\d+\.\d+\.\d+")
+
+    def test_operation_logger_streams_and_flushes_messages_immediately(self) -> None:
+        class FlushTrackingStream(StringIO):
+            def __init__(self) -> None:
+                super().__init__()
+                self.flush_count = 0
+
+            def flush(self) -> None:
+                self.flush_count += 1
+                super().flush()
+
+        stream = FlushTrackingStream()
+        logger = OperationLogger(verbose=True, stream=stream)
+        logger.info("warning")
+        logger.progress(1, 2, "Inspecting repo")
+        logger.detail("detail")
+        self.assertEqual(stream.getvalue().splitlines(), ["warning", "[1/2] Inspecting repo", "detail"])
+        self.assertEqual(stream.flush_count, 3)
+
+    def test_cli_print_stderr_flushes_immediately(self) -> None:
+        class FlushTrackingStream(StringIO):
+            def __init__(self) -> None:
+                super().__init__()
+                self.flush_count = 0
+
+            def flush(self) -> None:
+                self.flush_count += 1
+                super().flush()
+
+        stream = FlushTrackingStream()
+        original_stderr = sys.stderr
+        sys.stderr = stream
+        try:
+            print_stderr("error")
+        finally:
+            sys.stderr = original_stderr
+        self.assertEqual(stream.getvalue(), "error\n")
+        self.assertEqual(stream.flush_count, 1)
 
     def test_export_direct_child_repository_to_stdout(self) -> None:
         remote = self.create_remote_repo("alpha")

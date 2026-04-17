@@ -236,7 +236,7 @@ def import_repositories(
     restore_submodules_flag: bool,
     restore_worktrees_flag: bool,
     verbose: bool = False,
-) -> tuple[list[str], bool]:
+) -> bool:
     data = parse_yaml_import(yaml_text)
     validate_import_data(data)
     logger = OperationLogger(verbose=verbose)
@@ -263,4 +263,4 @@ def import_repositories(
             failed = True
     if verbose:
         logger.detail(f"Import finished with {'failures' if failed else 'no failures'}")
-    return logger.messages, failed
+    return failed

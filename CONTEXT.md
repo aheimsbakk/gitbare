@@ -29,7 +29,7 @@
 - Support `--pull` during import to update already-existing compatible repositories instead of failing clone-only behavior.
 - If `--pull` fails due to divergence or non-fast-forward constraints, warn and continue with later repositories.
 - Support `--dry-run` so users can preview warnings, conflicts, and planned actions before making changes.
-- When `--verbose` is enabled, print ordered per-repository export/import progress and planning information to `stderr` without affecting export YAML on `stdout`.
+- When `--verbose` is enabled, stream ordered per-repository export/import progress and planning information to `stderr` during the run without affecting export YAML on `stdout`.
 - Treat `git@`, `https://`, `ssh://`, and local filesystem remotes as clonable sources.
 - Warn when local filesystem remotes are exported because they may not be portable.
 - Skip repositories without clonable remotes, always with a warning.

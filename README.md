@@ -35,5 +35,5 @@ gitbare --help
 - Source code lives under `src/`.
 - Tests live under `tests/`.
 - Export warnings and verbose logs go to `stderr`.
-- `--verbose` prints ordered progress counters for each repository plus discovery mode, selected remotes, dry-run planning, restore steps, and dirty/local-only item paths.
+- `--verbose` prints ordered progress counters for each repository as the run happens, plus discovery mode, selected remotes, dry-run planning, restore steps, and dirty/local-only item paths.
 - Backups that rely on local filesystem remotes may not restore correctly on different machines or paths.

@@ -309,7 +309,7 @@ def inspect_repository(
     return record
 
 
-def export_repositories(scan_root: Path, recursive: bool, verbose: bool, dry_run: bool = False) -> tuple[dict[str, object], list[str]]:
+def export_repositories(scan_root: Path, recursive: bool, verbose: bool, dry_run: bool = False) -> dict[str, object]:
     logger = OperationLogger(verbose=verbose)
     repositories: list[dict[str, object]] = []
     if verbose:
@@ -342,7 +342,7 @@ def export_repositories(scan_root: Path, recursive: bool, verbose: bool, dry_run
             logger.info(f"Skipping {relative_posix(repo_path, scan_root)}: {error}")
     repositories.sort(key=lambda item: item["path"])
     logger.detail(f"Prepared export for {len(repositories)} repositories")
-    return {"schema_version": 1, "scan_root": ".", "recursive": recursive, "repositories": repositories}, logger.messages
+    return {"schema_version": 1, "scan_root": ".", "recursive": recursive, "repositories": repositories}
 
 
 def dump_yaml(data: dict[str, object]) -> str:
