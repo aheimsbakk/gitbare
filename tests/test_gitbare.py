@@ -125,8 +125,18 @@ class GitbareCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0)
         self.assertIn("Starting export", result.stderr)
         self.assertIn("Dry-run enabled: export will only plan and emit YAML", result.stderr)
-        self.assertIn("Inspecting repo", result.stderr)
+        self.assertIn("[1/1] Inspecting repo", result.stderr)
         self.assertIn("Dirty untracked path in repo: dirty.txt", result.stderr)
+
+    def test_verbose_export_reports_incrementing_progress(self) -> None:
+        first_remote = self.create_remote_repo("first")
+        second_remote = self.create_remote_repo("second")
+        self.create_working_repo(self.temp_dir / "first", first_remote)
+        self.create_working_repo(self.temp_dir / "second", second_remote)
+        result = run(["--verbose"], cwd=self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("[1/2] Inspecting first", result.stderr)
+        self.assertIn("[2/2] Inspecting second", result.stderr)
 
     def test_import_from_stdin_restores_repository(self) -> None:
         remote = self.create_remote_repo("importable")
@@ -251,13 +261,27 @@ class GitbareCliTests(unittest.TestCase):
         self.assertEqual(dry_run_result.returncode, 0)
         self.assertIn("Starting import", dry_run_result.stderr)
         self.assertIn("Dry-run enabled: import will only report planned actions", dry_run_result.stderr)
-        self.assertIn("Planning restore for source", dry_run_result.stderr)
+        self.assertIn("[1/1] Planning restore for source", dry_run_result.stderr)
         self.assertIn("Would clone source", dry_run_result.stderr)
         result = run(["--verbose"], cwd=restore_root, input_text=exported_text)
         self.assertEqual(result.returncode, 0)
+        self.assertIn("[1/1] Restoring source", result.stderr)
         self.assertIn("Cloning repository source", result.stderr)
         self.assertIn("Restoring HEAD state for source", result.stderr)
         self.assertIn("Completed restore for source", result.stderr)
+
+    def test_verbose_import_reports_incrementing_progress(self) -> None:
+        first_remote = self.create_remote_repo("import-first")
+        second_remote = self.create_remote_repo("import-second")
+        self.create_working_repo(self.temp_dir / "first", first_remote)
+        self.create_working_repo(self.temp_dir / "second", second_remote)
+        exported_text = run([], cwd=self.temp_dir).stdout
+        restore_root = self.temp_dir / "restore-progress"
+        restore_root.mkdir()
+        result = run(["--verbose", "--dry-run"], cwd=restore_root, input_text=exported_text)
+        self.assertEqual(result.returncode, 0)
+        self.assertIn("[1/2] Planning restore for first", result.stderr)
+        self.assertIn("[2/2] Planning restore for second", result.stderr)
 
 
 if __name__ == "__main__":

@@ -122,8 +122,8 @@ gitbare --help
   - **Export:** invalid usage.
 - `-v`, `--verbose`
   - Emit progress and decision logs to `stderr`.
-  - In export mode, include discovery mode, dry-run planning, repository inspection, selected primary remotes, captured metadata counts, and detailed dirty/local-only/stash paths or names.
-  - In import mode, include YAML load summary, dry-run planning, per-repository clone/pull decisions, and restore step transitions for remotes, HEAD, config, submodules, and worktrees.
+  - In export mode, include ordered per-repository progress counters, discovery mode, dry-run planning, selected primary remotes, captured metadata counts, and detailed dirty/local-only/stash paths or names.
+  - In import mode, include ordered per-repository progress counters, YAML load summary, dry-run planning, clone/pull decisions, and restore step transitions for remotes, HEAD, config, submodules, and worktrees.
   - Must never pollute `stdout` during export.
 - `-h`, `--help`
   - Print usage and exit `0`.
@@ -568,6 +568,7 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - `--version` output should expose the application version in a simple machine-readable string.
 - User-facing documentation must include `uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare ...` examples.
 - User-facing documentation must also include `uv tool install git+https://github.com/aheimsbakk/gitbare.git` examples.
+- If `uv.lock` changes during implementation or version bumps, it must be staged and committed with the related changes.
 
 ---
 

@@ -14,3 +14,7 @@ class OperationLogger:
     def detail(self, message: str) -> None:
         if self.verbose:
             self.messages.append(message)
+
+    def progress(self, current: int, total: int, message: str) -> None:
+        if self.verbose:
+            self.messages.append(f"[{current}/{total}] {message}")
