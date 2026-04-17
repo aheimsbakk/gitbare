@@ -94,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
                 dry_run=args.dry_run,
                 restore_submodules_flag=args.restore_submodules,
                 restore_worktrees_flag=args.restore_worktrees,
+                verbose=args.verbose,
             )
         except (OSError, ValueError) as error:
             print(str(error), file=sys.stderr)
@@ -101,7 +102,7 @@ def main(argv: list[str] | None = None) -> int:
         for message in messages:
             print(message, file=sys.stderr)
         return 3 if failed else 0
-    data, warnings = export_repositories(Path.cwd(), args.recursive, args.verbose)
+    data, warnings = export_repositories(Path.cwd(), args.recursive, args.verbose, args.dry_run)
     for warning in warnings:
         print(warning, file=sys.stderr)
     write_export_text(args, sys.stdout, dump_yaml(data))

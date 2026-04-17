@@ -122,6 +122,8 @@ gitbare --help
   - **Export:** invalid usage.
 - `-v`, `--verbose`
   - Emit progress and decision logs to `stderr`.
+  - In export mode, include discovery mode, dry-run planning, repository inspection, selected primary remotes, captured metadata counts, and detailed dirty/local-only/stash paths or names.
+  - In import mode, include YAML load summary, dry-run planning, per-repository clone/pull decisions, and restore step transitions for remotes, HEAD, config, submodules, and worktrees.
   - Must never pollute `stdout` during export.
 - `-h`, `--help`
   - Print usage and exit `0`.

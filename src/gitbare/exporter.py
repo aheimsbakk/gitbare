@@ -7,6 +7,7 @@ from pathlib import Path
 import yaml
 
 from gitbare.git_ops import GitCommandError, classify_transport, is_clonable_source, is_git_repository, parse_null_config, relative_posix, run_git
+from gitbare.logging_utils import OperationLogger
 
 
 def discover_repositories(scan_root: Path, recursive: bool) -> list[Path]:
@@ -245,47 +246,49 @@ def capture_worktrees(repo_path: Path, scan_root: Path) -> list[dict[str, str]]:
     return sorted(worktrees, key=lambda item: item["path"])
 
 
-def inspect_repository(repo_path: Path, scan_root: Path, verbose: bool) -> tuple[dict[str, object] | None, list[str], list[str]]:
-    warnings: list[str] = []
-    verbose_lines: list[str] = []
+def inspect_repository(
+    repo_path: Path,
+    scan_root: Path,
+    logger: OperationLogger,
+) -> tuple[dict[str, object] | None, list[str]]:
+    messages: list[str] = []
+    relative_repo_path = relative_posix(repo_path, scan_root)
     remotes = capture_remotes(repo_path)
     primary_remote = select_primary_remote(remotes)
     if primary_remote is None or not is_clonable_source(primary_remote["fetch_url"]):
-        warnings.append(f"Skipping {relative_posix(repo_path, scan_root)}: no clonable primary remote")
-        return None, warnings, verbose_lines
+        messages.append(f"Skipping {relative_repo_path}: no clonable primary remote")
+        return None, messages
+    logger.detail(f"Inspecting {relative_repo_path}")
+    logger.detail(f"Selected primary remote {primary_remote['name']} for {relative_repo_path}")
     if primary_remote["transport"] == "other":
-        warnings.append(
-            f"Repository {relative_posix(repo_path, scan_root)} uses a local or non-standard remote and may not be portable"
+        messages.append(
+            f"Repository {relative_repo_path} uses a local or non-standard remote and may not be portable"
         )
     dirty, dirty_files, untracked_files = capture_dirty_state(repo_path)
     if dirty:
-        warnings.append(f"Repository {relative_posix(repo_path, scan_root)} is dirty")
-        if verbose:
-            for path in dirty_files:
-                verbose_lines.append(f"dirty: {relative_posix(repo_path, scan_root)}:{path}")
-            for path in untracked_files:
-                verbose_lines.append(f"untracked: {relative_posix(repo_path, scan_root)}:{path}")
+        messages.append(f"Repository {relative_repo_path} is dirty")
+        for path in dirty_files:
+            logger.detail(f"Dirty tracked path in {relative_repo_path}: {path}")
+        for path in untracked_files:
+            logger.detail(f"Dirty untracked path in {relative_repo_path}: {path}")
     local_only_branches = capture_local_only_branches(repo_path)
     if local_only_branches:
-        warnings.append(f"Repository {relative_posix(repo_path, scan_root)} has local-only branches")
-        if verbose:
-            for branch in local_only_branches:
-                verbose_lines.append(f"local-only-branch: {relative_posix(repo_path, scan_root)}:{branch}")
+        messages.append(f"Repository {relative_repo_path} has local-only branches")
+        for branch in local_only_branches:
+            logger.detail(f"Local-only branch in {relative_repo_path}: {branch}")
     local_only_tags = capture_local_only_tags(repo_path)
     if local_only_tags:
-        warnings.append(f"Repository {relative_posix(repo_path, scan_root)} has local-only tags")
-        if verbose:
-            for tag in local_only_tags:
-                verbose_lines.append(f"local-only-tag: {relative_posix(repo_path, scan_root)}:{tag}")
+        messages.append(f"Repository {relative_repo_path} has local-only tags")
+        for tag in local_only_tags:
+            logger.detail(f"Local-only tag in {relative_repo_path}: {tag}")
     stashes = capture_stashes(repo_path)
     if stashes:
-        warnings.append(f"Repository {relative_posix(repo_path, scan_root)} has stashes that will not be backed up")
-        if verbose:
-            for stash in stashes:
-                verbose_lines.append(f"stash: {relative_posix(repo_path, scan_root)}:{stash}")
+        messages.append(f"Repository {relative_repo_path} has stashes that will not be backed up")
+        for stash in stashes:
+            logger.detail(f"Stash in {relative_repo_path}: {stash}")
     git_config = capture_git_config(repo_path)
     record: dict[str, object] = {
-        "path": relative_posix(repo_path, scan_root),
+        "path": relative_repo_path,
         "primary_remote": primary_remote["name"],
         "checkout_url": primary_remote["fetch_url"],
         "checkout_transport": primary_remote["transport"],
@@ -299,23 +302,35 @@ def inspect_repository(repo_path: Path, scan_root: Path, verbose: bool) -> tuple
         "submodules": capture_submodules(repo_path),
         "worktrees": capture_worktrees(repo_path, scan_root),
     }
-    return record, warnings, verbose_lines
+    logger.detail(f"Captured {len(remotes)} remotes for {relative_repo_path}")
+    logger.detail(f"Captured {len(record['git_config'])} local config entries for {relative_repo_path}")
+    if record["submodules"]:
+        logger.detail(f"Captured {len(record['submodules'])} submodules for {relative_repo_path}")
+    if record["worktrees"]:
+        logger.detail(f"Captured {len(record['worktrees'])} linked worktrees for {relative_repo_path}")
+    return record, messages
 
 
-def export_repositories(scan_root: Path, recursive: bool, verbose: bool) -> tuple[dict[str, object], list[str]]:
-    warnings: list[str] = []
-    verbose_lines: list[str] = []
+def export_repositories(scan_root: Path, recursive: bool, verbose: bool, dry_run: bool = False) -> tuple[dict[str, object], list[str]]:
+    logger = OperationLogger(verbose=verbose)
+    messages: list[str] = []
     repositories: list[dict[str, object]] = []
+    if verbose:
+        logger.detail(f"Starting export from {scan_root}")
+        logger.detail(f"Discovery mode: {'recursive' if recursive else 'direct-children'}")
+        if dry_run:
+            logger.detail("Dry-run enabled: export will only plan and emit YAML")
     discovered = discover_repositories(scan_root, recursive)
+    logger.detail(f"Discovered {len(discovered)} candidate repositories")
     excluded_realpaths: set[Path] = set()
     for repo_path in discovered:
         try:
             real_path = repo_path.resolve()
             if real_path in excluded_realpaths:
+                logger.detail(f"Skipping nested path already represented elsewhere: {relative_posix(repo_path, scan_root)}")
                 continue
-            record, repo_warnings, repo_verbose = inspect_repository(repo_path, scan_root, verbose)
-            warnings.extend(repo_warnings)
-            verbose_lines.extend(repo_verbose)
+            record, repo_messages = inspect_repository(repo_path, scan_root, logger)
+            messages.extend(repo_messages)
             if record is None:
                 continue
             repositories.append(record)
@@ -326,10 +341,10 @@ def export_repositories(scan_root: Path, recursive: bool, verbose: bool) -> tupl
                 worktree_path = (scan_root / Path(worktree["path"])).resolve()
                 excluded_realpaths.add(worktree_path)
         except GitCommandError as error:
-            warnings.append(f"Skipping {relative_posix(repo_path, scan_root)}: {error}")
+            messages.append(f"Skipping {relative_posix(repo_path, scan_root)}: {error}")
     repositories.sort(key=lambda item: item["path"])
-    warnings.extend(verbose_lines)
-    return {"schema_version": 1, "scan_root": ".", "recursive": recursive, "repositories": repositories}, warnings
+    logger.detail(f"Prepared export for {len(repositories)} repositories")
+    return {"schema_version": 1, "scan_root": ".", "recursive": recursive, "repositories": repositories}, messages + logger.messages
 
 
 def dump_yaml(data: dict[str, object]) -> str:

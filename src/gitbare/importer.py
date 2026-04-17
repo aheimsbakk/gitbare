@@ -5,6 +5,7 @@ from pathlib import Path
 import yaml
 
 from gitbare.git_ops import GitCommandError, is_git_repository, run_command, run_git
+from gitbare.logging_utils import OperationLogger
 
 
 PROTECTED_CONFIG_KEYS = {
@@ -162,22 +163,26 @@ def restore_repository(
     dry_run: bool,
     restore_submodules_flag: bool,
     restore_worktrees_flag: bool,
+    logger: OperationLogger,
 ) -> tuple[list[str], str | None]:
     warnings: list[str] = []
     relative_path = ensure_relative_repo_path(str(repo_data["path"]))
     target_path = destination_root / relative_path
+    logger.detail(f"Planning restore for {repo_data['path']}")
     if dry_run:
+        logger.detail(f"Dry-run: validating target {repo_data['path']}")
         if target_path.exists() and is_compatible_repository(target_path, repo_data):
             if pull:
-                return warnings, f"Would pull {repo_data['path']}"
-            return warnings, f"Would fail {repo_data['path']}: compatible repository exists without --pull"
+                return [*warnings, f"Would pull {repo_data['path']}"], None
+            return [*warnings, f"Would fail {repo_data['path']}: compatible repository exists without --pull"], None
         if target_path.exists() and any(target_path.iterdir()):
-            return warnings, f"Would fail {repo_data['path']}: target exists and is incompatible"
-        return warnings, f"Would clone {repo_data['path']}"
+            return [*warnings, f"Would fail {repo_data['path']}: target exists and is incompatible"], None
+        return [*warnings, f"Would clone {repo_data['path']}"], None
     if target_path.exists():
         if is_compatible_repository(target_path, repo_data):
             if not pull:
                 return warnings, f"Failed {repo_data['path']}: compatible repository exists without --pull"
+            logger.detail(f"Updating existing compatible repository {repo_data['path']}")
             update_existing_repository(target_path)
             try:
                 restore_remotes(target_path, repo_data)
@@ -186,6 +191,7 @@ def restore_repository(
                 return warnings, f"Failed {repo_data['path']}: {error}"
         elif target_path.is_dir() and not any(target_path.iterdir()):
             try:
+                logger.detail(f"Cloning into empty directory for {repo_data['path']}")
                 target_path = clone_repository(destination_root, repo_data)
             except GitCommandError as error:
                 return warnings, f"Failed {repo_data['path']}: {error}"
@@ -193,19 +199,26 @@ def restore_repository(
             return warnings, f"Failed {repo_data['path']}: target exists and is incompatible"
     else:
         try:
+            logger.detail(f"Cloning repository {repo_data['path']}")
             target_path = clone_repository(destination_root, repo_data)
         except GitCommandError as error:
             return warnings, f"Failed {repo_data['path']}: {error}"
     try:
+        logger.detail(f"Restoring remotes for {repo_data['path']}")
         restore_remotes(target_path, repo_data)
+        logger.detail(f"Restoring HEAD state for {repo_data['path']}")
         restore_head(target_path, repo_data, pull)
+        logger.detail(f"Reapplying local Git config for {repo_data['path']}")
         warnings.extend(restore_git_config(target_path, repo_data))
         if restore_submodules_flag:
+            logger.detail(f"Restoring submodules for {repo_data['path']}")
             restore_submodules(target_path, repo_data)
         if restore_worktrees_flag:
+            logger.detail(f"Restoring linked worktrees for {repo_data['path']}")
             restore_worktrees(target_path, repo_data, destination_root)
     except (GitCommandError, ValueError) as error:
         return warnings, f"Failed {repo_data['path']}: {error}"
+    logger.detail(f"Completed restore for {repo_data['path']}")
     return warnings, None
 
 
@@ -217,11 +230,18 @@ def import_repositories(
     dry_run: bool,
     restore_submodules_flag: bool,
     restore_worktrees_flag: bool,
+    verbose: bool = False,
 ) -> tuple[list[str], bool]:
     data = parse_yaml_import(yaml_text)
     validate_import_data(data)
+    logger = OperationLogger(verbose=verbose)
     messages: list[str] = []
     failed = False
+    if verbose:
+        logger.detail(f"Starting import into {destination_root}")
+        logger.detail(f"Loaded {len(data['repositories'])} repositories from YAML")
+        if dry_run:
+            logger.detail("Dry-run enabled: import will only report planned actions")
     for repo_data in data["repositories"]:
         warnings, failure = restore_repository(
             destination_root,
@@ -230,9 +250,12 @@ def import_repositories(
             dry_run=dry_run,
             restore_submodules_flag=restore_submodules_flag,
             restore_worktrees_flag=restore_worktrees_flag,
+            logger=logger,
         )
         messages.extend(warnings)
         if failure:
             messages.append(failure)
             failed = True
-    return messages, failed
+    if verbose:
+        logger.detail(f"Import finished with {'failures' if failed else 'no failures'}")
+    return messages + logger.messages, failed
