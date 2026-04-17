@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gitbare"
+version = "0.2.0"
+description = "Export and restore local Git working copies as YAML"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0,<7.0",
+]
+
+[project.scripts]
+gitbare = "gitbare.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
