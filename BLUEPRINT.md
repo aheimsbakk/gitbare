@@ -89,10 +89,10 @@ gitbare -V
 
 ### Packaging and `uvx` Usage
 ```bash
-uvx --from git+https://github.com/OWNER/REPO.git gitbare --help
-uvx --from git+https://github.com/OWNER/REPO.git gitbare > git.yml
-cat git.yml | uvx --from git+https://github.com/OWNER/REPO.git gitbare --pull
-uv tool install git+https://github.com/OWNER/REPO.git
+uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare --help
+uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare > git.yml
+cat git.yml | uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare --pull
+uv tool install git+https://github.com/aheimsbakk/gitbare.git
 gitbare --help
 ```
 
@@ -564,8 +564,8 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - Automated tests must be stored under `tests/`.
 - `--help` output must document stdin/stdout usage examples.
 - `--version` output should expose the application version in a simple machine-readable string.
-- User-facing documentation must include `uvx --from git+https://github.com/... gitbare ...` examples.
-- User-facing documentation must also include `uv tool install git+https://github.com/...` examples.
+- User-facing documentation must include `uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare ...` examples.
+- User-facing documentation must also include `uv tool install git+https://github.com/aheimsbakk/gitbare.git` examples.
 
 ---
 

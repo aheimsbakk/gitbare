@@ -53,7 +53,7 @@
 - `-v` / `--verbose`
 - `-h` / `--help`
 - `-V` / `--version`
-- `uvx --from git+https://github.com/OWNER/REPO.git gitbare --help`
+- `uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare --help`
 
 ## Implementation Constraints
 - Use Git through `subprocess` with explicit argument lists.
@@ -67,7 +67,7 @@
 - Place application code under `src/`.
 - Place the full automated test suite under `tests/`.
 - Use Python `unittest` for the test suite.
-- Document local development with `uv`, installation with `uv tool install`, and remote execution with `uvx` from GitHub.
+- Document local development with `uv`, installation with `uv tool install git+https://github.com/aheimsbakk/gitbare.git`, and remote execution with `uvx --from git+https://github.com/aheimsbakk/gitbare.git`.
 - Document that local filesystem remote backups may fail to restore on different machines.
 - Users should run the installed `gitbare` command, not the package directory.
 - Write warnings and errors to `stderr`, and return non-zero on critical failures.
