@@ -4,7 +4,6 @@
 
 `gitbare` discovers all Git working copies under the current directory, exports their metadata (remotes, HEAD state, local config, submodules, linked worktrees) to a single YAML file, and can fully restore that layout on another machine.
 
-
 ## Features
 
 - **Export** all Git repos under the current directory to a portable YAML snapshot.
@@ -16,15 +15,11 @@
 - **Clean stdout**: all warnings, errors, and verbose logs go to `stderr` so output is always pipeable.
 - Warns about dirty repos, local-only branches, local tags, stashes, and non-portable filesystem remotes.
 
----
-
 ## Requirements
 
 - Python ≥ 3.10
 - `git` available on `PATH`
 - [`uv`](https://github.com/astral-sh/uv) (recommended for installation and local development)
-
----
 
 ## Installation
 
@@ -40,8 +35,6 @@ gitbare --version
 ```bash
 uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare --help
 ```
-
----
 
 ## Quick Start
 
@@ -87,8 +80,6 @@ uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare > git.yml
 cat git.yml | uvx --from git+https://github.com/aheimsbakk/gitbare.git gitbare --pull
 ```
 
----
-
 ## CLI Reference
 
 ```
@@ -117,8 +108,6 @@ gitbare [OPTIONS]
 | `2` | Discovery or export failure |
 | `3` | Import, restore, or apply failure |
 
----
-
 ## How It Works
 
 **Export mode** (no stdin YAML detected, or `--export`):
@@ -139,15 +128,11 @@ gitbare [OPTIONS]
 
 > **Note:** `gitbare` does not back up uncommitted file contents. Export warns about dirty repos, but only the committed history and configuration are restored.
 
----
-
 ## Security Notes
 
 - Repository-local Git config (including remote URLs) is exported verbatim to support faithful round-trip restoration. If your `.git/config` contains secrets or tokens, they will appear in the YAML.
 - **Store exported YAML files securely.**
 - Backups that reference local filesystem remotes (e.g. `/mnt/repos/foo`) may not restore correctly on a different machine or directory layout — `gitbare` will warn you at export time.
-
----
 
 ## Development
 
