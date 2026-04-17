@@ -8,13 +8,6 @@ from gitbare.git_ops import GitCommandError, is_git_repository, run_command, run
 from gitbare.logging_utils import OperationLogger
 
 
-PROTECTED_CONFIG_KEYS = {
-    "core.repositoryformatversion",
-    "core.bare",
-    "core.worktree",
-}
-
-
 def parse_yaml_import(text: str) -> dict[str, object]:
     data = yaml.safe_load(text)
     if not isinstance(data, dict) or data.get("schema_version") != 1 or not isinstance(data.get("repositories"), list):
@@ -98,9 +91,6 @@ def restore_git_config(target_path: Path, repo_data: dict[str, object], logger: 
     for entry in entries:
         key = entry["key"]
         value = entry["value"]
-        if key in PROTECTED_CONFIG_KEYS:
-            logger.info(f"Skipping protected config key {key} in {repo_data['path']}")
-            continue
         run_git(target_path, "config", "--local", "--unset-all", key, check=False)
         run_git(target_path, "config", "--local", "--add", key, value)
 

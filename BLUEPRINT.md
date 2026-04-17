@@ -282,7 +282,7 @@ repositories:
   - All remotes configured in the repo.
   - Each remote stores `name`, `fetch_url`, `push_url`, and transport classification.
 - `git_config`
-  - Full repository-local config entries from `.git/config`, represented as an ordered list of key/value pairs.
+  - Restorable repository-local config entries from `.git/config`, represented as an ordered list of key/value pairs.
   - This is the authoritative restore source.
 - `custom_config`
   - Filtered subset of `git_config` intended for visibility.
@@ -438,11 +438,11 @@ The practical limitation is that successful restore depends on submodule URLs be
 - Reapply repository-local config only, never global config.
 - If duplicate config keys are encountered in the exported repository-local config data, abort processing with exit code `1` because this backup format does not support ambiguous duplicate-key restoration.
 - For keys being restored, remove existing local values for that key before writing restored values so the final `.git/config` is deterministic.
-- Protected keys that should not be blindly forced in v1:
+- Export must exclude repository-local config keys that are never restored in v1:
   - `core.repositoryformatversion`
   - `core.bare`
   - `core.worktree`
-- If a protected key appears in exported `git_config`, skip it and emit a warning to `stderr`.
+- Import should therefore not emit skip warnings for those excluded keys.
 
 ### Existing Directory Policy
 - If the target directory does not exist: create it.

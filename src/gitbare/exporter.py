@@ -10,6 +10,13 @@ from gitbare.git_ops import GitCommandError, classify_transport, is_clonable_sou
 from gitbare.logging_utils import OperationLogger
 
 
+PROTECTED_CONFIG_KEYS = {
+    "core.repositoryformatversion",
+    "core.bare",
+    "core.worktree",
+}
+
+
 def discover_repositories(scan_root: Path, recursive: bool) -> list[Path]:
     repositories: list[Path] = []
     candidates = sorted([child for child in scan_root.iterdir() if child.is_dir()])
@@ -90,7 +97,7 @@ def capture_git_config(repo_path: Path) -> list[dict[str, str]]:
     result = run_git(repo_path, "config", "--local", "--null", "--list", check=False)
     if result.returncode != 0:
         return []
-    return parse_null_config(result.stdout)
+    return [entry for entry in parse_null_config(result.stdout) if entry["key"] not in PROTECTED_CONFIG_KEYS]
 
 
 def filter_custom_config(git_config: list[dict[str, str]]) -> list[dict[str, str]]:
@@ -98,16 +105,9 @@ def filter_custom_config(git_config: list[dict[str, str]]) -> list[dict[str, str
         "remote.",
         "branch.",
     )
-    excluded_exact = {
-        "core.repositoryformatversion",
-        "core.bare",
-        "core.worktree",
-    }
     custom_entries: list[dict[str, str]] = []
     for entry in git_config:
         key = entry["key"]
-        if key in excluded_exact:
-            continue
         if any(key.startswith(prefix) for prefix in excluded_prefixes):
             continue
         custom_entries.append({"key": entry["key"], "value": entry["value"]})

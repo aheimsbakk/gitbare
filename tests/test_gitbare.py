@@ -159,6 +159,20 @@ class GitbareCliTests(unittest.TestCase):
         exported = yaml.safe_load(output_path.read_text(encoding="utf-8"))
         self.assertEqual(exported["repositories"][0]["path"], "repo")
 
+    def test_export_excludes_protected_git_config_keys_from_backup(self) -> None:
+        remote = self.create_remote_repo("protected-config")
+        repo = self.create_working_repo(self.temp_dir / "repo", remote)
+        run_git(["config", "--local", "core.repositoryformatversion", "0"], cwd=repo)
+        run_git(["config", "--local", "core.bare", "false"], cwd=repo)
+        run_git(["config", "--local", "core.worktree", str(repo)], cwd=repo)
+        result = run([], cwd=self.temp_dir)
+        self.assertEqual(result.returncode, 0)
+        exported = yaml.safe_load(result.stdout)
+        keys = [entry["key"] for entry in exported["repositories"][0]["git_config"]]
+        self.assertNotIn("core.repositoryformatversion", keys)
+        self.assertNotIn("core.bare", keys)
+        self.assertNotIn("core.worktree", keys)
+
     def test_verbose_export_reports_decisions_to_stderr(self) -> None:
         remote = self.create_remote_repo("verbose-export")
         working = self.create_working_repo(self.temp_dir / "repo", remote)

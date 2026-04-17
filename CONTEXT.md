@@ -63,6 +63,7 @@
 - Use safe YAML loading only.
 - Compare local tag names from `git tag --list` against the union of remote tag names gathered with `git ls-remote --tags <remote>` when deciding which tags should trigger warnings.
 - Treat duplicate git config keys in backup data as a fatal validation error with exit code `1`.
+- Exclude non-restorable local Git config keys (`core.repositoryformatversion`, `core.bare`, and `core.worktree`) from backups entirely.
 - Back up secrets present in repository-local Git config and related recorded URLs; users will handle the export securely.
 - Package the project so the installed command is `gitbare`.
 - Place application code under `src/`.
