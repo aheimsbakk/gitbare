@@ -139,13 +139,24 @@ gitbare [OPTIONS]
 ```bash
 # Create virtual environment and install dependencies
 uv venv
-uv sync
+uv sync --extra test
 
 # Run the test suite
 uv run python -m unittest discover -s tests -v
 
+# Run Ruff
+uv run ruff check .
+
+# Validate a generated worklog before commit
+scripts/validate-worklog.sh docs/worklogs/YYYY-MM-DD-HH-mm-short-desc.md
+
 # Run the CLI locally
 uv run python -m gitbare --help
+
+# Add release tags to the finalized commit
+uvx --from git+https://github.com/aheimsbakk/gitsem gitsem vX.Y.Z
 ```
+
+`scripts/validate-worklog.sh` checks a single worklog file path, verifies the required front matter keys, validates the UTC timestamp format, and ensures the body stays within the 1-4 line limit.
 
 Source code lives under `src/`, tests under `tests/`.

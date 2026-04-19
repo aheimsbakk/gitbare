@@ -59,6 +59,7 @@
 ## Implementation Constraints
 - Use Git through `subprocess` with explicit argument lists.
 - Use `PyYAML` for parsing and emission.
+- Keep Ruff in a dedicated `test` optional dependency group instead of runtime dependencies.
 - Keep export `stdout` clean and send logs to `stderr`.
 - Use safe YAML loading only.
 - Compare local tag names from `git tag --list` against the union of remote tag names gathered with `git ls-remote --tags <remote>` when deciding which tags should trigger warnings.
@@ -70,6 +71,9 @@
 - Place the full automated test suite under `tests/`.
 - Use Python `unittest` for the test suite.
 - Document local development with `uv`, installation with `uv tool install git+https://github.com/aheimsbakk/gitbare.git`, and remote execution with `uvx --from git+https://github.com/aheimsbakk/gitbare.git`.
+- Document local test setup with `uv sync --extra test` and `uv run ruff check .`.
+- Use `uvx --from git+https://github.com/aheimsbakk/gitsem gitsem` to add version tags to the correct finalized commit.
+- Validate each generated worklog with `scripts/validate-worklog.sh <worklog-path>` before commit.
 - Document that local filesystem remote backups may fail to restore on different machines.
 - Users should run the installed `gitbare` command, not the package directory.
 - Write warnings and errors to `stderr`, and return non-zero on critical failures.

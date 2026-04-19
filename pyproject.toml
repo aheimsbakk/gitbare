@@ -4,12 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitbare"
-version = "0.3.6"
+version = "0.3.7"
 description = "Export and restore local Git working copies as YAML"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
   "PyYAML>=6.0,<7.0",
+]
+
+[project.optional-dependencies]
+test = [
+  "ruff==0.15.11",
 ]
 
 [project.scripts]

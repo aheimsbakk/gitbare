@@ -274,7 +274,7 @@ class GitbareCliTests(unittest.TestCase):
     def test_submodule_and_worktree_round_trip_metadata(self) -> None:
         lib_remote = self.create_remote_repo("lib")
         app_remote = self.create_remote_repo("app")
-        lib_working = self.create_working_repo(self.temp_dir / "lib", lib_remote)
+        self.create_working_repo(self.temp_dir / "lib", lib_remote)
         app_working = self.create_working_repo(self.temp_dir / "app", app_remote)
         run_git(["-c", "protocol.file.allow=always", "submodule", "add", str(lib_remote), "vendor/lib"], cwd=app_working)
         run_git(["commit", "-am", "add submodule"], cwd=app_working)

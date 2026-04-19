@@ -536,6 +536,7 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - Console entrypoint means package installation exposes a shell command named `gitbare` that runs the Python application without requiring users to type `python -m ...`.
 - Keep dependencies minimal.
 - Declare `PyYAML` explicitly with a stable version range.
+- Test-only developer tooling should be declared via a dedicated optional dependency group rather than bundled into runtime dependencies.
 - Include installation and execution docs for:
   - local editable/development use with `uv`,
   - installed CLI use,
@@ -560,8 +561,11 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - Minimum supported version target: Python 3.10
 - External executable required: `git`
 - Required Python dependency: `PyYAML`.
+- Test dependency group: `test`, currently used for Ruff.
 - The package must be installable with standard Python packaging metadata.
 - The project must support local development via `uv venv` and command execution via `uv run`.
+- Version tags for finalized releases must be created with `uvx --from git+https://github.com/aheimsbakk/gitsem gitsem` so the tag lands on the correct final commit.
+- Worklog validation must run through `scripts/validate-worklog.sh <worklog-path>` before final commit.
 - The package must expose a console entrypoint so users do not need to invoke a raw `.py` file.
 - Application source files must be stored under `src/`.
 - Automated tests must be stored under `tests/`.
