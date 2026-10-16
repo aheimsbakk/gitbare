@@ -6,7 +6,7 @@ the real tree.
 
 ## Technology Stack
 
-- Language: Python 3, minimum 3.10
+- Language: Python 3, minimum 3.11
 - Runtime dependency: `PyYAML` (safe load/dump only)
 - External tool: `git` on `PATH`
 - Package manager and env tooling: `uv`
@@ -52,6 +52,7 @@ src/
     capture_nesting.py    submodule and linked-worktree capture
     exporter.py           export orchestration and YAML emission
     importer.py           YAML parse and restore/apply
+    import_validation.py  snapshot schema and path-safety validation
     git_ops.py            subprocess git wrapper and URL/config helpers
     logging_utils.py      OperationLogger for verbose stderr output
   gitbare.egg-info/       build artifact (git-ignored)
@@ -80,7 +81,8 @@ scripts/
 | `capture_worktrees` | `src/gitbare/capture_nesting.py` |
 | `filter_custom_config` | `src/gitbare/capture.py` |
 | `emit_yaml` | `dump_yaml` in `src/gitbare/exporter.py` |
-| `parse_yaml_import` | `src/gitbare/importer.py` |
+| `parse_yaml_import` | `src/gitbare/import_validation.py` |
+| Import schema and path validation | `src/gitbare/import_validation.py` |
 | `plan_operations` | dry-run branch in `restore_repository`, `src/gitbare/importer.py` |
 | `restore_repository` | `src/gitbare/importer.py` |
 | `clone_repository` | `src/gitbare/importer.py` |
@@ -109,8 +111,12 @@ scripts/
   and linked-worktree definitions for a repository.
 - `src/gitbare/exporter.py` — export orchestration and emission. Inspects each
   discovered repository, assembles the schema-version-1 dict, and writes YAML.
-- `src/gitbare/importer.py` — import business logic. Validates YAML and applies
-  clone, pull, remote, HEAD, config, submodule, and worktree restore steps.
+- `src/gitbare/importer.py` — import business logic. Applies clone, pull,
+  remote, HEAD, config, submodule, and worktree restore steps.
+- `src/gitbare/import_validation.py` — import input validation. Parses the
+  snapshot with the safe loader, enforces the schema-version-1 envelope and
+  required per-repository fields, and rejects stored paths that could escape
+  the restore root. Raises `ValueError` with plain-language messages.
 - `src/gitbare/git_ops.py` — shared git access. Runs git with argument lists,
   classifies transport, checks clonable sources, and parses null-delimited
   config.
