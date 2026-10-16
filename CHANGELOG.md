@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.10] - 2026-10-16
+
+- **why:** Split the oversized exporter module into focused discovery and capture modules
+- **model:** kompis/qwen3.8-flash-next-iq3_s
+- **tags:** refactor, modules, export
+
+### Added
+
+- `src/gitbare/discovery.py` for repository traversal
+- `src/gitbare/capture.py` for per-aspect metadata capture
+- `src/gitbare/capture_nesting.py` for submodule and worktree capture
+
+### Changed
+
+- `src/gitbare/exporter.py` now holds only orchestration and YAML emission (348 to 147 lines)
+
 ## [0.3.9] - 2026-10-16
 
 - **why:** Replace the worklog workflow with changelog and codebase docs, and add sync and validation scripts

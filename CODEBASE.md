@@ -47,7 +47,10 @@ src/
     __init__.py           package marker and __version__
     __main__.py           `python -m gitbare` shim
     cli.py                argument parsing, mode detection, stdin/stdout I/O
-    exporter.py           discovery and YAML export capture
+    discovery.py          scan-root traversal to find git working copies
+    capture.py            per-aspect git metadata capture and config filter
+    capture_nesting.py    submodule and linked-worktree capture
+    exporter.py           export orchestration and YAML emission
     importer.py           YAML parse and restore/apply
     git_ops.py            subprocess git wrapper and URL/config helpers
     logging_utils.py      OperationLogger for verbose stderr output
@@ -67,15 +70,15 @@ scripts/
 | Blueprint responsibility | Physical location |
 |---|---|
 | `main`, `build_arg_parser`, `detect_mode` | `src/gitbare/cli.py` |
-| `discover_repositories` | `src/gitbare/exporter.py` |
+| `discover_repositories` | `src/gitbare/discovery.py` |
 | `inspect_repository` | `src/gitbare/exporter.py` |
-| `select_primary_remote` | `src/gitbare/exporter.py` |
-| `capture_head_state` | `src/gitbare/exporter.py` |
-| `capture_dirty_state` | `src/gitbare/exporter.py` |
-| `capture_git_config` | `src/gitbare/exporter.py` |
-| `capture_submodules` | `src/gitbare/exporter.py` |
-| `capture_worktrees` | `src/gitbare/exporter.py` |
-| `filter_custom_config` | `src/gitbare/exporter.py` |
+| `select_primary_remote` | `src/gitbare/capture.py` |
+| `capture_head_state` | `src/gitbare/capture.py` |
+| `capture_dirty_state` | `src/gitbare/capture.py` |
+| `capture_git_config` | `src/gitbare/capture.py` |
+| `capture_submodules` | `src/gitbare/capture_nesting.py` |
+| `capture_worktrees` | `src/gitbare/capture_nesting.py` |
+| `filter_custom_config` | `src/gitbare/capture.py` |
 | `emit_yaml` | `dump_yaml` in `src/gitbare/exporter.py` |
 | `parse_yaml_import` | `src/gitbare/importer.py` |
 | `plan_operations` | dry-run branch in `restore_repository`, `src/gitbare/importer.py` |
@@ -96,9 +99,16 @@ scripts/
 - `src/gitbare/cli.py` — input/output layer. Parses flags, detects import or
   export mode, reads stdin or a file, writes stdout or a file, maps failures to
   exit codes. No restore rules live here.
-- `src/gitbare/exporter.py` — export business logic. Discovers repositories and
-  captures HEAD, dirty state, remotes, config, submodules, and worktrees into a
-  schema-version-1 dict.
+- `src/gitbare/discovery.py` — filesystem traversal. Walks the scan root
+  (direct children or recursively) and returns Git working-copy paths in a
+  deterministic order.
+- `src/gitbare/capture.py` — export capture. Reads HEAD, dirty state, remotes,
+  local config, local-only branches/tags, and stashes, and classifies custom
+  config. Pure per-aspect git queries with no logging.
+- `src/gitbare/capture_nesting.py` — nested structure capture. Reads submodule
+  and linked-worktree definitions for a repository.
+- `src/gitbare/exporter.py` — export orchestration and emission. Inspects each
+  discovered repository, assembles the schema-version-1 dict, and writes YAML.
 - `src/gitbare/importer.py` — import business logic. Validates YAML and applies
   clone, pull, remote, HEAD, config, submodule, and worktree restore steps.
 - `src/gitbare/git_ops.py` — shared git access. Runs git with argument lists,
