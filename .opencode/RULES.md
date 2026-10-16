@@ -35,7 +35,7 @@
 24. **Automation & Scripting:** When creating utility scripts (e.g., in `scripts/`), ensure they are executable (`chmod +x <path>`). Document each script's purpose, required arguments, and usage examples in `CONTRIBUTING.md`.
 
 ## V. Documentation & Formatting
-25. **Strict Templating:** Strictly adhere to required formats (e.g., YAML front-matter in worklogs). Do not invent new fields, change key casing, or exceed length limits.
+25. **Strict Templating:** Strictly adhere to required formats (e.g., YAML front-matter). Do not invent new fields, change key casing, or exceed length limits.
 26. **Synchronized Docs:** Code and docs must match. Immediately update inline comments, `README.md` (user-facing content), `CONTRIBUTING.md` (developer guides, scripts, tooling), api and protocol documentation, and `.env.example` when changing logic or adding variables.
 27. **Intent-Based Commenting:** Comments must explain the architectural decisions, edge cases, and business logic context (the "why"), rather than reiterating the syntax or mechanics (the "what"). Implement standard documentation blocks (e.g., JSDoc, PEP-257 docstrings) for all public APIs, class definitions, and shared utility functions. Commented-out source code is strictly prohibited; rely on version control for historical reference.
 28. **Documentation Separation:** `README.md` is user documentation only — what the product does and how to use it. Development documentation — setup, build, test, scripts, and contribution workflow — belongs in `CONTRIBUTING.md`. Do not mix the two. Other docs (`BLUEPRINT.md`, `CODEBASE.md`, `CHANGELOG.md`) are unaffected.

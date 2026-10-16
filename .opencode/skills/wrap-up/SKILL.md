@@ -109,8 +109,7 @@ Before committing, ensure the repository is clean:
 - Add temporary build artifacts, dependency caches, and error logs (e.g.
   `.qa-error.log`) to `.gitignore`.
 - **Never** add source code, configuration files (including `VERSION`), or
-  documentation directories (including `docs/worklogs/` if present) to
-  `.gitignore`. These must remain tracked by Git.
+  documentation directories to `.gitignore`. These must remain tracked by Git.
 
 ---
 

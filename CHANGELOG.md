@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.3.11] - 2026-10-16
+
+- **why:** Remove stale worklog references left over from the changelog switch
+- **model:** kompis/qwen3.8-flash-next-iq3_s
+- **tags:** agent-framework, docs, cleanup
+
+### Changed
+
+- `.opencode/RULES.md` rule 25 no longer names worklogs as a front-matter example
+- `.opencode/skills/wrap-up/SKILL.md` gitignore rule no longer names `docs/worklogs/`
+
 ## [0.3.10] - 2026-10-16
 
 - **why:** Split the oversized exporter module into focused discovery and capture modules
