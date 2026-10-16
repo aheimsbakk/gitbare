@@ -565,7 +565,8 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - The package must be installable with standard Python packaging metadata.
 - The project must support local development via `uv venv` and command execution via `uv run`.
 - Version tags for finalized releases must be created with `uvx --from git+https://github.com/aheimsbakk/gitsem gitsem` so the tag lands on the correct final commit.
-- Worklog validation must run through `scripts/validate-worklog.sh <worklog-path>` before final commit.
+- Changelog validation must run through `scripts/validate-changelog.sh` before final commit.
+- Codebase synchronization must run through `scripts/verify_codebase_sync.sh` before final wrap-up.
 - The package must expose a console entrypoint so users do not need to invoke a raw `.py` file.
 - Application source files must be stored under `src/`.
 - Automated tests must be stored under `tests/`.
