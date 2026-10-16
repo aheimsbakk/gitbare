@@ -17,7 +17,7 @@
 
 ## Requirements
 
-- Python ≥ 3.10
+- Python ≥ 3.11
 - `git` available on `PATH`
 - [`uv`](https://github.com/astral-sh/uv) (recommended for installation and local development)
 
@@ -91,7 +91,7 @@ gitbare [OPTIONS]
 | `--export <path\|->`  | `-e` | Export to a file or `-` for stdout (default when no stdin YAML is detected). |
 | `--import <path\|->` | `-i` | Import from a file or `-` for stdin. |
 | `--recursive` | `-r` | Scan all descendant directories, not just direct children. |
-| `--dry-run` | | Preview planned actions or warnings without changing anything. |
+| `--dry-run` | | Preview planned actions or warnings without changing anything. Import preview exits `3` if any planned action would fail. |
 | `--pull` | | On import: update already-existing compatible repos instead of failing. |
 | `--restore-submodules` | | On import: initialize and restore recorded submodules. |
 | `--restore-worktrees` | | On import: recreate recorded linked worktrees. |
@@ -133,6 +133,7 @@ gitbare [OPTIONS]
 - Repository-local Git config (including remote URLs) is exported verbatim to support faithful round-trip restoration. If your `.git/config` contains secrets or tokens, they will appear in the YAML.
 - **Store exported YAML files securely.**
 - Backups that reference local filesystem remotes (e.g. `/mnt/repos/foo`) may not restore correctly on a different machine or directory layout — `gitbare` will warn you at export time.
+- Import rejects stored paths that are absolute or contain `..`, so a hand-edited snapshot cannot write outside the restore directory.
 
 ## Development
 

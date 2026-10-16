@@ -2,40 +2,20 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import yaml
-
-from gitbare.git_ops import GitCommandError, is_git_repository, run_command, run_git
+from gitbare.git_ops import (
+    NETWORK_GIT_TIMEOUT_SECONDS,
+    GitCommandError,
+    is_git_repository,
+    run_command,
+    run_git,
+)
+from gitbare.import_validation import (
+    ensure_relative_path,
+    parse_yaml_import,
+    validate_git_config,
+    validate_import_data,
+)
 from gitbare.logging_utils import OperationLogger
-
-
-def parse_yaml_import(text: str) -> dict[str, object]:
-    data = yaml.safe_load(text)
-    if not isinstance(data, dict) or data.get("schema_version") != 1 or not isinstance(data.get("repositories"), list):
-        raise ValueError("Input must be gitbare schema_version 1 YAML")
-    return data
-
-
-def ensure_relative_repo_path(path_value: str) -> Path:
-    path = Path(path_value)
-    if path.is_absolute():
-        raise ValueError(f"Repository path must be relative: {path_value}")
-    return path
-
-
-def validate_git_config(entries: list[dict[str, str]]) -> None:
-    seen: set[str] = set()
-    for entry in entries:
-        key = entry["key"]
-        if key in seen:
-            raise ValueError(f"Duplicate git config key in backup data: {key}")
-        seen.add(key)
-
-
-def validate_import_data(data: dict[str, object]) -> None:
-    repositories = data.get("repositories", [])
-    for repo_data in repositories:
-        ensure_relative_repo_path(str(repo_data["path"]))
-        validate_git_config(list(repo_data.get("git_config", [])))
 
 
 def is_compatible_repository(target_path: Path, repo_data: dict[str, object]) -> bool:
@@ -57,10 +37,16 @@ def restore_remotes(target_path: Path, repo_data: dict[str, object]) -> None:
             run_git(target_path, "remote", "set-url", name, fetch_url)
         else:
             run_git(target_path, "remote", "add", name, fetch_url)
-        run_git(target_path, "remote", "set-url", "--push", name, push_url)
+        if push_url != fetch_url:
+            # Writing an explicit push URL identical to the fetch URL would add
+            # a remote.*.pushurl entry the source repository never had, which
+            # breaks round-trip comparison.
+            run_git(target_path, "remote", "set-url", "--push", name, push_url)
 
 
-def restore_head(target_path: Path, repo_data: dict[str, object], pull_mode: bool) -> None:
+def restore_head(
+    target_path: Path, repo_data: dict[str, object], pull_mode: bool
+) -> None:
     head = repo_data["head"]
     head_type = head["type"]
     commit = head["commit"]
@@ -68,14 +54,35 @@ def restore_head(target_path: Path, repo_data: dict[str, object], pull_mode: boo
     if head_type == "branch":
         branch = head["name"]
         remote_branch = f"refs/remotes/{primary_remote}/{branch}"
-        remote_exists = run_git(target_path, "rev-parse", "--verify", remote_branch, check=False).returncode == 0
-        local_exists = run_git(target_path, "rev-parse", "--verify", f"refs/heads/{branch}", check=False).returncode == 0
+        remote_exists = (
+            run_git(
+                target_path, "rev-parse", "--verify", remote_branch, check=False
+            ).returncode
+            == 0
+        )
+        local_exists = (
+            run_git(
+                target_path,
+                "rev-parse",
+                "--verify",
+                f"refs/heads/{branch}",
+                check=False,
+            ).returncode
+            == 0
+        )
         if pull_mode and local_exists and remote_exists:
             run_git(target_path, "checkout", branch)
             run_git(target_path, "merge", "--ff-only", remote_branch)
             return
         if remote_exists and not local_exists:
-            run_git(target_path, "checkout", "-B", branch, "--track", f"{primary_remote}/{branch}")
+            run_git(
+                target_path,
+                "checkout",
+                "-B",
+                branch,
+                "--track",
+                f"{primary_remote}/{branch}",
+            )
             return
         if local_exists:
             run_git(target_path, "checkout", branch)
@@ -85,7 +92,9 @@ def restore_head(target_path: Path, repo_data: dict[str, object], pull_mode: boo
     run_git(target_path, "checkout", "--detach", commit)
 
 
-def restore_git_config(target_path: Path, repo_data: dict[str, object], logger: OperationLogger) -> None:
+def restore_git_config(
+    target_path: Path, repo_data: dict[str, object], logger: OperationLogger
+) -> None:
     entries = list(repo_data.get("git_config", []))
     validate_git_config(entries)
     for entry in entries:
@@ -97,9 +106,7 @@ def restore_git_config(target_path: Path, repo_data: dict[str, object], logger: 
 
 def restore_submodules(target_path: Path, repo_data: dict[str, object]) -> None:
     for submodule in repo_data.get("submodules", []):
-        submodule_path = Path(submodule["path"])
-        if submodule_path.is_absolute():
-            raise ValueError(f"Submodule path must be relative: {submodule['path']}")
+        submodule_path = ensure_relative_path(str(submodule["path"]), "Submodule")
         run_git(
             target_path,
             "-c",
@@ -109,38 +116,59 @@ def restore_submodules(target_path: Path, repo_data: dict[str, object]) -> None:
             "--init",
             "--",
             submodule["path"],
+            timeout=NETWORK_GIT_TIMEOUT_SECONDS,
         )
-        run_git(target_path / submodule_path, "fetch", "--all", "--prune", check=False)
+        run_git(
+            target_path / submodule_path,
+            "fetch",
+            "--all",
+            "--prune",
+            check=False,
+            timeout=NETWORK_GIT_TIMEOUT_SECONDS,
+        )
         if submodule.get("commit"):
             run_git(target_path / submodule_path, "checkout", submodule["commit"])
 
 
-def restore_worktrees(target_path: Path, repo_data: dict[str, object], destination_root: Path) -> None:
+def restore_worktrees(
+    target_path: Path, repo_data: dict[str, object], destination_root: Path
+) -> None:
     for worktree in repo_data.get("worktrees", []):
-        worktree_path = Path(worktree["path"])
-        if worktree_path.is_absolute():
-            raise ValueError(f"Worktree path must be relative: {worktree['path']}")
+        worktree_path = ensure_relative_path(str(worktree["path"]), "Worktree")
         absolute_path = destination_root / worktree_path
         if absolute_path.exists() and any(absolute_path.iterdir()):
-            raise ValueError(f"Worktree target already exists and is non-empty: {worktree['path']}")
+            raise ValueError(
+                f"Worktree target already exists and is non-empty: {worktree['path']}"
+            )
         absolute_path.parent.mkdir(parents=True, exist_ok=True)
         branch = worktree.get("branch")
         commit = worktree.get("commit", "HEAD")
         if branch:
-            run_git(target_path, "worktree", "add", "-B", branch, str(absolute_path), commit)
+            run_git(
+                target_path, "worktree", "add", "-B", branch, str(absolute_path), commit
+            )
         else:
-            run_git(target_path, "worktree", "add", "--detach", str(absolute_path), commit)
+            run_git(
+                target_path, "worktree", "add", "--detach", str(absolute_path), commit
+            )
 
 
 def clone_repository(destination_root: Path, repo_data: dict[str, object]) -> Path:
-    target_path = destination_root / ensure_relative_repo_path(str(repo_data["path"]))
+    target_path = destination_root / ensure_relative_path(
+        str(repo_data["path"]), "Repository"
+    )
     target_path.parent.mkdir(parents=True, exist_ok=True)
-    run_command(["git", "clone", str(repo_data["checkout_url"]), str(target_path)])
+    run_command(
+        ["git", "clone", str(repo_data["checkout_url"]), str(target_path)],
+        timeout=NETWORK_GIT_TIMEOUT_SECONDS,
+    )
     return target_path
 
 
 def update_existing_repository(target_path: Path) -> None:
-    run_git(target_path, "fetch", "--all", "--prune")
+    run_git(
+        target_path, "fetch", "--all", "--prune", timeout=NETWORK_GIT_TIMEOUT_SECONDS
+    )
 
 
 def restore_repository(
@@ -153,26 +181,34 @@ def restore_repository(
     restore_worktrees_flag: bool,
     logger: OperationLogger,
 ) -> bool:
-    relative_path = ensure_relative_repo_path(str(repo_data["path"]))
+    relative_path = ensure_relative_path(str(repo_data["path"]), "Repository")
     target_path = destination_root / relative_path
     if dry_run:
         if target_path.exists() and is_compatible_repository(target_path, repo_data):
             if pull:
                 logger.info(f"Would pull {repo_data['path']}")
                 return False
-            logger.info(f"Would fail {repo_data['path']}: compatible repository exists without --pull")
-            return False
+            logger.info(
+                f"Would fail {repo_data['path']}: compatible repository exists without --pull"
+            )
+            return True
         if target_path.exists() and any(target_path.iterdir()):
-            logger.info(f"Would fail {repo_data['path']}: target exists and is incompatible")
-            return False
+            logger.info(
+                f"Would fail {repo_data['path']}: target exists and is incompatible"
+            )
+            return True
         logger.info(f"Would clone {repo_data['path']}")
         return False
     if target_path.exists():
         if is_compatible_repository(target_path, repo_data):
             if not pull:
-                logger.info(f"Failed {repo_data['path']}: compatible repository exists without --pull")
+                logger.info(
+                    f"Failed {repo_data['path']}: compatible repository exists without --pull"
+                )
                 return True
-            logger.detail(f"Updating existing compatible repository {repo_data['path']}")
+            logger.detail(
+                f"Updating existing compatible repository {repo_data['path']}"
+            )
             update_existing_repository(target_path)
             try:
                 restore_remotes(target_path, repo_data)
@@ -188,7 +224,9 @@ def restore_repository(
                 logger.info(f"Failed {repo_data['path']}: {error}")
                 return True
         else:
-            logger.info(f"Failed {repo_data['path']}: target exists and is incompatible")
+            logger.info(
+                f"Failed {repo_data['path']}: target exists and is incompatible"
+            )
             return True
     else:
         try:

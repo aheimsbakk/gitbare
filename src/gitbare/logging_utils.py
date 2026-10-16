@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import TextIO
 
 
@@ -9,12 +9,10 @@ from typing import TextIO
 class OperationLogger:
     verbose: bool = False
     stream: TextIO = sys.stderr
-    messages: list[str] = field(default_factory=list)
 
     def emit(self, message: str, *, verbose_only: bool) -> None:
         if verbose_only and not self.verbose:
             return
-        self.messages.append(message)
         print(message, file=self.stream, flush=True)
 
     def info(self, message: str) -> None:

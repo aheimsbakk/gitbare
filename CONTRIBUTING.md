@@ -5,7 +5,7 @@ workflow. User-facing usage lives in `README.md`.
 
 ## Requirements
 
-- Python 3.10 or newer
+- Python 3.11 or newer
 - `git` on `PATH`
 - [`uv`](https://github.com/astral-sh/uv) for environments and commands
 
@@ -29,11 +29,12 @@ metadata.
 ## Lint
 
 ```bash
-uv run ruff check .
+uv run --extra test ruff check .
 ```
 
 Ruff lives in the `test` optional dependency group, not in runtime
-dependencies.
+dependencies. The `--extra test` flag makes `uv run` install that group, so
+the pinned ruff version is always the one that runs.
 
 ## Run The CLI Locally
 

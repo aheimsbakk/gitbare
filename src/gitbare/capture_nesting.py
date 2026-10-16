@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from gitbare.git_ops import relative_posix, run_git
+
+# Submodule names may contain dots, so the name is everything between
+# "submodule." and ".path"; naive splitting on "." truncates them.
+SUBMODULE_PATH_KEY = re.compile(r"^submodule\.(.*)\.path$")
 
 
 def capture_submodules(repo_path: Path) -> list[dict[str, str]]:
@@ -25,7 +30,10 @@ def capture_submodules(repo_path: Path) -> list[dict[str, str]]:
     submodules: list[dict[str, str]] = []
     for line in path_result.stdout.splitlines():
         key, _, submodule_path = line.partition(" ")
-        name = key.split(".")[1]
+        match = SUBMODULE_PATH_KEY.match(key)
+        if not match:
+            continue
+        name = match.group(1)
         url = run_git(
             repo_path,
             "config",

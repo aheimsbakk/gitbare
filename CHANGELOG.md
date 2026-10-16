@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.4.0] - 2026-10-16
+
+- **why:** Harden import against hostile or malformed snapshots and close the findings from the code review
+- **model:** kompis/qwen3.8-flash-next-iq3_s
+- **tags:** import, validation, security, dependencies
+
+### Added
+
+- `src/gitbare/import_validation.py` checks required fields, head shape, and list types before any restore step runs
+- Timeouts on every Git call in `src/gitbare/git_ops.py`: 120 seconds local, 600 seconds for clone, fetch, `ls-remote`, and submodule update
+- 14 new tests, including the export-import-reexport round trip and the installed `gitbare` console entrypoint
+
+### Changed
+
+- Usage and argument errors now exit `1` instead of argparse's default `2` (`CliArgumentParser` in `src/gitbare/cli.py`)
+- `--dry-run` import exits `3` when a planned action would fail, so scripts can detect blockers from the exit code
+- `requires-python` raised to `>=3.11`; ruff pinned to `0.17.1`; `wheel` bounded in the build system
+- `CONTRIBUTING.md` lint command is now `uv run --extra test ruff check .`, which makes `uv run` install and use the pinned ruff
+
+### Fixed
+
+- Malformed YAML and repository entries missing required fields now fail with a clear message instead of a traceback
+- Submodules whose configured name contains dots (for example `vendor.lib`) are captured correctly in `capture_nesting.py`
+- Dirty paths with spaces or non-ASCII characters export byte-exact through `git status --porcelain -z`
+- `restore_remotes` no longer writes a push URL identical to the fetch URL, which broke round-trip comparison
+
+### Security
+
+- Import rejects stored paths that are absolute or contain `..`, so a hand-edited snapshot cannot write outside the restore root
+- Timeout messages name only the Git subcommand, keeping credentialed remote URLs out of logs
+
 ## [0.3.11] - 2026-10-16
 
 - **why:** Remove stale worklog references left over from the changelog switch

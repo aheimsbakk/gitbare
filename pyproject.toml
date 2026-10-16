@@ -1,20 +1,20 @@
 [build-system]
-requires = ["setuptools>=69.0", "wheel"]
+requires = ["setuptools>=69.0", "wheel>=0.45,<1.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitbare"
-version = "0.3.11"
+version = "0.4.0"
 description = "Export and restore local Git working copies as YAML"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
   "PyYAML>=6.0,<7.0",
 ]
 
 [project.optional-dependencies]
 test = [
-  "ruff==0.15.11",
+  "ruff==0.17.1",
 ]
 
 [project.scripts]

@@ -49,12 +49,12 @@ The tool is intended to reproduce the exact practical layout of many repositorie
 
 ## Runtime and Dependency Policy
 - Language: Python 3
-- Minimum supported Python version: 3.10
+- Minimum supported Python version: 3.11
 - Implementation must use Python 3 plus the existing `git` command-line tool.
 - YAML handling must use `PyYAML`.
 - Use safe `PyYAML` loader and dumper APIs only.
 - Other third-party dependencies should remain minimal and must be justified by clear implementation value.
-- Minimum Python version is not fixed yet and should be decided during implementation.
+- Minimum Python version is fixed at 3.11; 3.10 reached end of life in October 2026.
 - The project must be packaged as an installable Python package that exposes a `gitbare` console command.
 - Local development should use `uv` for environment creation and command execution.
 - The CLI must remain runnable through the installed entrypoint rather than relying on a top-level `gitbare.py` script file.
@@ -114,6 +114,7 @@ gitbare --help
 - `--dry-run`
   - **Export:** validate discovery and report warnings without writing clone or restore changes.
   - **Import:** parse YAML and report the actions, conflicts, and expected failures without modifying the filesystem or Git state.
+  - **Import exit semantics:** dry-run import exits `3` when any planned action would fail, and `0` when every planned action would succeed, so scripts can detect blockers from the exit code alone.
 - `--restore-worktrees`
   - **Import only:** recreate recorded linked worktrees after the main repositories are restored.
   - **Export:** invalid usage.
@@ -379,7 +380,8 @@ In import mode:
 - YAML parsing and validation still run,
 - compatibility checks still run,
 - the tool must report what it would clone, pull, skip, fail, restore, or warn about,
-- no filesystem changes or Git mutations are allowed.
+- no filesystem changes or Git mutations are allowed,
+- the run exits `3` if any reported action is a would-fail, otherwise `0`.
 
 `--dry-run` is intended to let users discover path conflicts, non-clonable repositories, remote mismatches, missing commits, submodule/worktree restore risks, and other blockers before executing a real import.
 
@@ -421,7 +423,7 @@ If `--pull` is not provided and a compatible repository already exists, import s
   - restore the main repository first,
   - recreate each linked worktree using Git worktree commands,
   - restore the recorded branch or detached commit state for each worktree,
-  - reject any worktree entry whose stored path is absolute,
+  - reject any worktree entry whose stored path is absolute or contains a `..` segment,
   - fail safely if a target worktree path already exists and is incompatible.
 
 ### Feasibility Note: Worktrees
@@ -457,6 +459,11 @@ The practical limitation is that successful restore depends on submodule URLs be
 - Nested folder structure is recreated entirely from each repository `path` value.
 - Therefore a config exported with `-r` automatically recreates nested layout during import.
 
+### Path Safety Rules
+- Every stored path (repository, submodule, and worktree) must be relative to the restore root.
+- Import must reject any stored path that is absolute or contains a `..` segment, before touching the filesystem.
+- Import must report the offending path in the error message.
+
 ---
 
 ## Parsing and Safety Constraints
@@ -481,6 +488,8 @@ Implications:
 - Never use `eval()`.
 - Treat all parsed strings as untrusted input.
 - Always invoke Git with argument lists via `subprocess`, never shell-expanded command strings.
+- Every Git invocation runs under a timeout. Local metadata commands use a short timeout (120 seconds). Network operations (clone, fetch, pull, remote tag listing, submodule update) use a longer timeout (600 seconds).
+- A timed-out Git command is reported as a per-repository failure with the command and timeout in the message, and processing continues with the next repository.
 - Send diagnostics to `stderr`, never mix them into exported YAML.
 
 ---
@@ -558,7 +567,7 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 ## Operational Requirements
 - Installed command name: `gitbare`
 - Interpreter: Python 3
-- Minimum supported version target: Python 3.10
+- Minimum supported version target: Python 3.11
 - External executable required: `git`
 - Required Python dependency: `PyYAML`.
 - Test dependency group: `test`, currently used for Ruff.
@@ -621,6 +630,7 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - `--pull` is rejected in export mode.
 - `--restore-worktrees` is rejected in export mode.
 - `--restore-submodules` is rejected in export mode.
+- Usage and argument errors exit with code `1`.
 - Installed `gitbare` console entrypoint launches successfully.
 - `uv run gitbare --help` works in local development.
 
@@ -640,6 +650,8 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - Warn when a repository contains stashes.
 - Include repository-local custom config in `custom_config`.
 - Record submodule metadata when present.
+- Record submodules whose configured name contains dots.
+- Capture dirty paths containing spaces or special characters.
 - Record linked worktree metadata when present.
 - Skip repositories without clonable remotes and warn.
 - Produce deterministic path ordering.
@@ -657,6 +669,10 @@ Implementation should stay function-oriented. A package layout such as `src/gitb
 - Fail safely on malformed YAML.
 - Fail safely on conflicting existing directories.
 - `--dry-run` reports planned clone/pull/skip actions without mutating anything.
+- `--dry-run` import exits `3` when a planned action would fail and `0` when all planned actions would succeed.
+- Fail with exit `1` and a clear message when a repository entry is missing required fields.
+- Reject repository, submodule, and worktree paths containing `..` segments.
+- Report a timed-out Git command as a per-repository failure instead of a crash.
 - Update an already-existing compatible repository when `--pull` is provided.
 - Warn and continue when `--pull` encounters divergence or non-fast-forward failure.
 - Refuse to mutate an already-existing compatible repository when `--pull` is not provided.

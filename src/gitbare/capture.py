@@ -4,8 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from gitbare.git_ops import classify_transport, parse_null_config, run_git
-
+from gitbare.git_ops import (
+    NETWORK_GIT_TIMEOUT_SECONDS,
+    classify_transport,
+    parse_null_config,
+    run_git,
+)
 
 PROTECTED_CONFIG_KEYS = {
     "core.repositoryformatversion",
@@ -29,16 +33,22 @@ def capture_head_state(repo_path: Path) -> dict[str, str]:
 
 
 def capture_dirty_state(repo_path: Path) -> tuple[bool, list[str], list[str]]:
-    status = run_git(repo_path, "status", "--porcelain").stdout.splitlines()
+    # -z keeps paths byte-exact. Default porcelain output C-quotes paths with
+    # spaces or non-ASCII characters, which corrupts the exported file lists.
+    status = run_git(repo_path, "status", "--porcelain", "-z").stdout.split("\0")
     dirty_files: list[str] = []
     untracked_files: list[str] = []
-    for line in status:
-        if not line:
+    index = 0
+    while index < len(status):
+        entry = status[index]
+        index += 1
+        if not entry:
             continue
-        code = line[:2]
-        path = line[3:]
-        if " -> " in path:
-            path = path.split(" -> ", 1)[1]
+        code = entry[:2]
+        path = entry[3:]
+        if code[0] in {"R", "C"} and index < len(status) and status[index]:
+            # Rename and copy entries carry the origin path in the next field.
+            index += 1
         path = Path(path).as_posix()
         if code == "??":
             untracked_files.append(path)
@@ -135,7 +145,14 @@ def capture_local_only_tags(repo_path: Path) -> list[str]:
         return []
     remote_tags: set[str] = set()
     for remote in capture_remotes(repo_path):
-        result = run_git(repo_path, "ls-remote", "--tags", remote["name"], check=False)
+        result = run_git(
+            repo_path,
+            "ls-remote",
+            "--tags",
+            remote["name"],
+            check=False,
+            timeout=NETWORK_GIT_TIMEOUT_SECONDS,
+        )
         if result.returncode != 0:
             continue
         for line in result.stdout.splitlines():
